@@ -25,6 +25,7 @@ class TestLiveIntegration(unittest.TestCase):
         
         # Initialize the library
         # We assume ADC is set up in the environment
+        # Reset config to defaults
         jm.init(job_name=self.job_name, metric_prefix=self.metric_prefix)
         
         self.project_id = config.get_config().project_id
@@ -34,11 +35,6 @@ class TestLiveIntegration(unittest.TestCase):
         self.client = gcp_utils.get_client()
         if not self.client:
              self.skipTest("GCP Client could not be initialized. Skipping live test.")
-
-        # Ensure we don't use cached config from other tests
-        config._GCE_CONFIG_CACHE = None
-        # Force re-detection (which will default to global on non-GCE)
-        config.set_config(monitored_resource_type=None, monitored_resource_labels=None)
 
     def tearDown(self):
         listeners.stop_listeners()
