@@ -1,6 +1,6 @@
 [project]
 name = "jax-monitoring"
-version = "0.1.0"
+version = "0.1.1"
 description = "JAX Monitoring to send JAX metrics to Google Cloud Monitoring"
 readme = "README.md"
 license = "Apache-2.0"
