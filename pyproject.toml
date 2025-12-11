@@ -1,17 +1,24 @@
 [project]
-name = "jax_cloud_monitoring"
+name = "jax-monitoring"
 version = "0.1.0"
-description = "JAX Cloud Monitoring to send JAX metrics to Google Cloud Monitoring"
+description = "JAX Monitoring to send JAX metrics to Google Cloud Monitoring"
 readme = "README.md"
+license = "Apache-2.0"
+keywords = ["jax", "cloud", "monitoring"]
 authors = [
     { name = "Sam Stoelinga", email = "sammiestoel@gmail.com" }
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "google-cloud-monitoring>=2.28.0",
-    "jax>=0.6.2",
+  "jax",
+  "google-cloud-monitoring",
 ]
 
 [build-system]
 requires = ["uv_build>=0.9.0,<0.10.0"]
 build-backend = "uv_build"
+
+[project.urls]
+Documentation = "https://github.com/samos123/jax-monitoring#readme"
+Issues = "https://github.com/samos123/jax-monitoring/issues"
+Source = "https://github.com/samos123/jax-monitoring"

@@ -1,4 +1,5 @@
 from typing import Optional
+
 from .config import set_config
 from .listeners import register_listeners
 from .gcp_utils import initialize_client

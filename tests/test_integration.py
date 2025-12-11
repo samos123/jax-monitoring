@@ -6,20 +6,26 @@ import time
 import uuid
 import logging
 from google.cloud import monitoring_v3
-from jax_cloud_monitoring import init, listeners, config, gcp_utils
+import jax_monitoring as jm
+from jax_monitoring import config, listeners, gcp_utils
 
 class TestLiveIntegration(unittest.TestCase):
     def setUp(self):
         # Generate a unique event name to avoid collisions and easy lookup
         self.unique_id = str(uuid.uuid4())
         # Use a fixed event name to avoid creating too many custom metric descriptors (quota limit)
-        self.event_name = "integration_test_event"
-        self.metric_type = f"custom.googleapis.com/jax/monitoring/{self.event_name}"
+        # Updated to v2 to avoid type conflict with legacy INT64 metric (now using DOUBLE)
+        self.event_name = "integration_test_event_v3"
+        self.metric_type = None # Constructed dynamically in test using prefix
         self.job_name = f"integration_test_{self.unique_id}"
+        
+        # Use a unique metric prefix to avoid conflicts with existing metrics (e.g. incompatible value types)
+        # This effectively sandboxes the test run.
+        self.metric_prefix = f"custom.googleapis.com/jax/monitoring/test_{self.unique_id}"
         
         # Initialize the library
         # We assume ADC is set up in the environment
-        init(job_name=self.job_name)
+        jm.init(job_name=self.job_name, metric_prefix=self.metric_prefix)
         
         self.project_id = config.get_config().project_id
         if not self.project_id:
@@ -34,6 +40,8 @@ class TestLiveIntegration(unittest.TestCase):
 
     def test_end_to_end_metric_export(self):
         print(f"\nRunning live test with event: {self.event_name}")
+        # Construct expected metric type using the dynamic prefix
+        self.metric_type = f"{self.metric_prefix}/{self.event_name}"
         print(f"Target metric type: {self.metric_type}")
         
         # Record an event duration
@@ -43,8 +51,9 @@ class TestLiveIntegration(unittest.TestCase):
 
     def test_jax_compilation_metric(self):
         print(f"\nRunning live test for JAX compilation metric")
-        # Double slash should now be handled by the listener
-        target_metric = "custom.googleapis.com/jax/monitoring/jax/core/compile/backend_compile_duration"
+        # Construct expected metric type using the dynamic prefix
+        # Note: listeners.py handles the slash logic, usually appending /{event} to prefix
+        target_metric = f"{self.metric_prefix}/jax/core/compile/backend_compile_duration"
         print(f"Target metric type: {target_metric}")
 
         # Trigger JAX compilation
@@ -52,7 +61,7 @@ class TestLiveIntegration(unittest.TestCase):
         def matmul(x, y):
             return jnp.dot(x, y)
 
-        x = jnp.ones((100, 100))
+        x = jnp.ones((8, 8))
         # First call triggers compilation
         _ = matmul(x, x).block_until_ready()
         
@@ -107,6 +116,7 @@ class TestLiveIntegration(unittest.TestCase):
         if not found:
             print("Metric not found yet (this is expected due to ingestion latency).")
             print("Check the Cloud Monitoring console later.")
+            self.fail("Metric not found after 10 attempts.")
         else:
             print("Successfully verified metric export!")
 

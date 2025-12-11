@@ -3,12 +3,14 @@ import unittest
 from unittest.mock import patch, MagicMock
 import sys
 import importlib
-from jax_cloud_monitoring import config
+from jax_monitoring import config
 
 class TestGCEMetadata(unittest.TestCase):
     
+
     def setUp(self):
         # Reset config to defaults before each test
+        config._GCE_CONFIG_CACHE = None
         config._GLOBAL_CONFIG = config.Config()
 
     @patch('urllib.request.urlopen')
@@ -78,6 +80,7 @@ class TestGCEMetadata(unittest.TestCase):
         
         # Reload the module to trigger the top-level code
         importlib.reload(config)
+        config.set_config()
         
         # ASSERT
         cfg = config.get_config()

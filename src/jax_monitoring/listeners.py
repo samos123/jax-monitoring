@@ -1,3 +1,4 @@
+import atexit
 import jax.monitoring
 import time
 import logging
@@ -27,8 +28,10 @@ def _metric_worker(config: Config, queue: multiprocessing.Queue, stop_event: mul
     
     logger.info("Worker process started")
     
+    client = get_client()
+    
     while not stop_event.is_set():
-        client = get_client()
+        client = get_client() or client # refetch if needed or keep existing
         project_path = get_project_path()
         
         if not client or not project_path:
@@ -67,6 +70,35 @@ def _metric_worker(config: Config, queue: multiprocessing.Queue, stop_event: mul
             
         except Exception as e:
             logger.error(f"Error in metric worker: {e}")
+
+    # Final flush
+    logger.info("Worker process stopping, flushing remaining metrics...")
+    try:
+        # Try to drain the queue
+        while True:
+            try:
+                # Use a short timeout to drain
+                metric_data = queue.get(timeout=0.5)
+            except multiprocessing.queues.Empty:
+                logger.info("Queue empty, flush complete.")
+                break
+            except Exception as e:
+                logger.error(f"Error getting from queue during flush: {e}")
+                break
+
+            try:
+                series = _create_time_series(metric_data)
+                if series:
+                    logger.info(f"Exporting series: {series.metric.type}")
+                    client.create_time_series(
+                        request={"name": get_project_path(), "time_series": [series]}
+                    )
+            except Exception as e:
+                logger.error(f"Failed to export during flush: {e}")
+                # Continue flushing other metrics
+                continue
+    except Exception as e:
+        logger.error(f"Error during final flush: {e}")
 
 def _create_time_series(data: dict):
     config = get_config()
@@ -111,12 +143,14 @@ def _create_time_series(data: dict):
     end_time.nanos = nanos
     point.interval.end_time = end_time
     
+    series.unit = "s"
+    
     # Value
     value = data['value']
+    point.value.double_value = value
     
-    # Convert to microseconds to preserve precision in int64
-    point.value.int64_value = int(value * 1e6)
     series.metric_kind = metric_pb2.MetricDescriptor.MetricKind.GAUGE
+    series.value_type = metric_pb2.MetricDescriptor.ValueType.DOUBLE
     
     series.points.append(point)
     return series
@@ -154,6 +188,9 @@ def register_listeners():
             daemon=True
         )
         _WORKER_PROCESS.start()
+        
+        # Ensure listeners are stopped and flushed on exit
+        atexit.register(stop_listeners)
 
     jax.monitoring.register_event_duration_secs_listener(_on_duration)
     logger.info("JAX Cloud Monitoring listeners registered (multiprocessing).")

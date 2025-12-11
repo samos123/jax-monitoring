@@ -4,7 +4,7 @@ import jax.monitoring
 import time
 import multiprocessing
 import queue
-from jax_cloud_monitoring import listeners, config
+from jax_monitoring import listeners, config
 
 class TestListeners(unittest.TestCase):
     def setUp(self):
@@ -43,9 +43,9 @@ class TestListeners(unittest.TestCase):
         except queue.Empty:
             self.fail("Queue should not be empty")
 
-    @patch('jax_cloud_monitoring.listeners.get_client')
-    @patch('jax_cloud_monitoring.listeners.get_project_path')
-    @patch('jax_cloud_monitoring.listeners.initialize_client')
+    @patch('jax_monitoring.listeners.get_client')
+    @patch('jax_monitoring.listeners.get_project_path')
+    @patch('jax_monitoring.listeners.initialize_client')
     def test_worker_logic(self, mock_init, mock_get_path, mock_get_client):
         # Prepare mocks
         mock_client = MagicMock()
@@ -56,13 +56,13 @@ class TestListeners(unittest.TestCase):
         q = multiprocessing.Queue()
         stop_event = multiprocessing.Event()
         
-        config_data = {
-            'project_id': 'test-project',
-            'metric_prefix': 'custom',
-            'monitored_resource_type': 'global',
-            'monitored_resource_labels': {},
-            'job_name': 'test_job'
-        }
+        config_data = config.Config(
+            project_id='test-project',
+            metric_prefix='custom',
+            monitored_resource_type='global',
+            monitored_resource_labels={},
+            job_name='test_job'
+        )
         
         # Put some data
         q.put({
@@ -93,7 +93,10 @@ class TestListeners(unittest.TestCase):
         request = call_args[1]['request']
         series = request['time_series'][0]
         self.assertEqual(series.metric.type, "custom/test_event")
-        self.assertEqual(series.points[0].value.int64_value, 5000000)
+        from google.api import metric_pb2
+        self.assertEqual(series.unit, "s")
+        self.assertEqual(series.value_type, metric_pb2.MetricDescriptor.ValueType.DOUBLE)
+        self.assertEqual(series.points[0].value.double_value, 5.0)
 
 if __name__ == '__main__':
     unittest.main()
