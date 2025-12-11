@@ -7,9 +7,12 @@ from jax_monitoring import config
 
 class TestGCEMetadata(unittest.TestCase):
     
-
     def setUp(self):
         # Reset config to defaults before each test
+        config._GCE_CONFIG_CACHE = None
+        config._GLOBAL_CONFIG = config.Config()
+
+    def tearDown(self):
         config._GCE_CONFIG_CACHE = None
         config._GLOBAL_CONFIG = config.Config()
 
@@ -45,7 +48,7 @@ class TestGCEMetadata(unittest.TestCase):
         self.assertEqual(detected_config['monitored_resource_type'], 'gce_instance')
         self.assertEqual(detected_config['monitored_resource_labels']['instance_id'], '123456789')
         self.assertEqual(detected_config['monitored_resource_labels']['zone'], 'us-central1-a')
-        self.assertEqual(detected_config['monitored_resource_labels']['instance_name'], 'my-instance')
+        self.assertEqual(detected_config['monitored_resource_labels']['zone'], 'us-central1-a')
 
     @patch('urllib.request.urlopen')
     def test_detect_gce_config_not_gce(self, mock_urlopen):

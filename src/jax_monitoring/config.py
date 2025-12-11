@@ -45,15 +45,10 @@ def _detect_gce_config() -> dict[str, Any]:
         zone_full = _get_metadata("instance/zone")
         zone = zone_full.split("/")[-1] if zone_full else "unknown"
         
-        # Get instance name as requested by user
-        instance_name = _get_metadata("instance/name") 
-        
         config_updates["monitored_resource_labels"] = {
             "instance_id": instance_id,
             "zone": zone
         }
-        if instance_name:
-            config_updates["monitored_resource_labels"]["instance_name"] = instance_name
     
     _GCE_CONFIG_CACHE = config_updates
     return config_updates

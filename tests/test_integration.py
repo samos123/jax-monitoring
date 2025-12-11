@@ -35,6 +35,11 @@ class TestLiveIntegration(unittest.TestCase):
         if not self.client:
              self.skipTest("GCP Client could not be initialized. Skipping live test.")
 
+        # Ensure we don't use cached config from other tests
+        config._GCE_CONFIG_CACHE = None
+        # Force re-detection (which will default to global on non-GCE)
+        config.set_config(monitored_resource_type=None, monitored_resource_labels=None)
+
     def tearDown(self):
         listeners.stop_listeners()
 

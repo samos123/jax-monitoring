@@ -58,12 +58,18 @@ def _metric_worker(config: Config, queue: multiprocessing.Queue, stop_event: mul
                         series_list.append(series)
 
                 if series_list:
-                    try:
-                        client.create_time_series(
-                            request={"name": project_path, "time_series": series_list}
-                        )
-                    except Exception as e:
-                        logger.error(f"Failed to export metrics: {e}")
+                    # Retry export up to 3 times
+                    retries = 3
+                    for attempt in range(retries):
+                        try:
+                            client.create_time_series(
+                                request={"name": project_path, "time_series": series_list}
+                            )
+                            break # Success
+                        except Exception as e:
+                            logger.error(f"Failed to export metrics (attempt {attempt+1}/{retries}): {e}")
+                            if attempt < retries - 1:
+                                time.sleep(1.0) # Wait a bit before retry
             
             # Wait 5 seconds before next cycle (rate limiting)
             stop_event.wait(timeout=5)
