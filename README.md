@@ -36,6 +36,10 @@ if __name__ == "__main__":
     main()
 ```
 
+## Demo
+
+<img src="jax-monitoring.png" alt="Demo" width="80%"/>
+
 ## Configuration
 
 You can configure the behavior using `jm.init()`:
